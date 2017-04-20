@@ -1,9 +1,15 @@
 
+import es.gob.jmulticard.jse.provider.DnieProvider;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
+import java.security.Security;
+import java.security.UnrecoverableEntryException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Enumeration;
@@ -21,7 +27,6 @@ import javax.swing.JOptionPane;
  * @author Juan Carlos
  */
 public class AutenticaClient extends javax.swing.JFrame {
-
     public static User user = new User();
 
     /**
@@ -146,6 +151,14 @@ public class AutenticaClient extends javax.swing.JFrame {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         } catch (KeyStoreException ex) {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (CertificateException ex) {
+            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (UnrecoverableEntryException ex) {
+            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_jButtonAutenticaActionPerformed
 
@@ -156,7 +169,7 @@ public class AutenticaClient extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
+    public static void main(String args[]) throws IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableEntryException {
         String dn = "";
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
@@ -184,13 +197,13 @@ public class AutenticaClient extends javax.swing.JFrame {
         try {
             System.setProperty("es.gob.jmulticard.fastmode", "true");
 
-            iniKeyStore();
-
+         iniKeyStore();
+         
             final Enumeration<String> aliases = dniKS.aliases();
             while (aliases.hasMoreElements()) {
                 System.out.println(aliases.nextElement());
             }
-
+            user = new User(authCert.toString());
            
             infoBox("Hola " + user.getName(), "Bienvenido");
 
@@ -220,10 +233,19 @@ public class AutenticaClient extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(null, infoMessage, titleBar, JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private static void iniKeyStore() throws KeyStoreException {
+    private static void iniKeyStore() throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableEntryException {
         if (dniKS == null) {
-           //TODO inicializar el KeyStore 
+           //TODO inicializar el KeyStore
+          dniProvider = new DnieProvider();
+          Security.addProvider(dniProvider);
+          dniKS = KeyStore.getInstance("DNI"); //$NON-NLS-1$ 
+          dniKS.load(null, null);
+          authCert = (X509Certificate) dniKS.getCertificate("CertAutenticacion");
+         
+          
         }
+        
+        
     }
 
     public void saveCertificate() {
