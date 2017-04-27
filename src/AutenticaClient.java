@@ -1,17 +1,33 @@
 
 import es.gob.jmulticard.jse.provider.DnieProvider;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.Provider;
 import java.security.Security;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Base64;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -146,7 +162,15 @@ public class AutenticaClient extends javax.swing.JFrame {
     private void jButtonAutenticaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonAutenticaActionPerformed
         try {
             iniKeyStore();
-            doAuth("hola");
+            try {
+                doAuth("hola");
+            } catch (UnrecoverableKeyException ex) {
+                Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (MalformedURLException ex) {
+                Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (SignatureException ex) {
+                Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
         } catch (SignatureError ex) {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         } catch (KeyStoreException ex) {
@@ -159,11 +183,13 @@ public class AutenticaClient extends javax.swing.JFrame {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         } catch (UnrecoverableEntryException ex) {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InvalidKeyException ex) {
+            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         }
     }//GEN-LAST:event_jButtonAutenticaActionPerformed
 
     private void jButtonGrabarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGrabarActionPerformed
-      saveCertificate();
+      //saveCertificate();
     }//GEN-LAST:event_jButtonGrabarActionPerformed
 
     /**
@@ -196,7 +222,7 @@ public class AutenticaClient extends javax.swing.JFrame {
 
         try {
             System.setProperty("es.gob.jmulticard.fastmode", "true");
-
+           
          iniKeyStore();
          
             final Enumeration<String> aliases = dniKS.aliases();
@@ -205,7 +231,7 @@ public class AutenticaClient extends javax.swing.JFrame {
             }
             user = new User(authCert.toString());
            
-            infoBox("Hola " + user.getName(), "Bienvenido");
+            infoBox("Hola " + user.getName()," Bienvenido");
 
         } catch (KeyStoreException ex) {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
@@ -220,12 +246,14 @@ public class AutenticaClient extends javax.swing.JFrame {
         });
 
     }
-
+    public final static String[] resultados = {"OK","Error"};
+    public final static String[] mensajes = {"Autenticación Correcta.","Error en la autenticación, usuario inválido.",
+                                            "Error de conexión.", "Error en la url."};
     public static String alias = "CertFirmaDigital";
     private static Provider dniProvider = null;
     private static KeyStore dniKS = null;
     private static X509Certificate authCert = null;
-
+    private static  String url = "192.168.0.106:8081";
     /**
      * @param args the command line arguments
      */
@@ -248,13 +276,13 @@ public class AutenticaClient extends javax.swing.JFrame {
         
     }
 
-    public void saveCertificate() {
+    public void saveCertificate(byte[] encodedKey) {
         try {
 
             // Se obtiene el motor de firma y se inicializa
             FileOutputStream keyfos = new FileOutputStream("public.key");
             RSAPublicKey rsa = (RSAPublicKey) authCert.getPublicKey();
-            byte encodedKey[] = rsa.getEncoded();
+            //byte encodedKey[] = rsa.getEncoded(); cuando firmemos se pasa el rsa.getEncoded();
 
             String rsakey = rsa.getFormat() + " " + rsa.getAlgorithm() + rsa.toString();
             System.out.println(rsakey);
@@ -272,10 +300,15 @@ public class AutenticaClient extends javax.swing.JFrame {
      * @param data Datos a firmar
      * @return
      */
-    private String doAuth(String data) throws SignatureError {
-
-        //TODO realizar aquí la firma y crear el método de conexión aparte
-        return null;
+    private String doAuth(String data) throws SignatureError, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException, InvalidKeyException, MalformedURLException, SignatureException, IOException {
+        final Signature signature = Signature.getInstance("SHA1withRSA"); 
+        signature.initSign((PrivateKey) dniKS.getKey(alias, null));
+        signature.update(user.firma(url).getBytes()); //$NON-NLS-1$
+        final byte[] signatureBytes = signature.sign();
+        byte[] encoded = Base64.getEncoder().encode(signatureBytes);
+        peticion(encoded.toString());
+        
+        return signatureBytes.toString();
     }
 
     public class SignatureError extends Exception {
@@ -285,7 +318,67 @@ public class AutenticaClient extends javax.swing.JFrame {
         }
 
     }
-
+    public static String peticion(String aenviar) throws MalformedURLException, ProtocolException, IOException{
+        String inputline= "";
+        String [] salida = null;
+        String urlParameters  = "firm="+aenviar;
+        
+        byte[] datos = urlParameters.getBytes( StandardCharsets.UTF_8 );
+        int longitud = datos.length;
+        
+        //Cadena con la URL
+        String direccion = "http://"+url+"/server/validar";
+        System.out.println(direccion);
+        try{
+            //Monto la URL
+            URL url = new URL(direccion);
+            
+            try{
+                //Establezco conexión y parámetros
+                HttpURLConnection conn= (HttpURLConnection) url.openConnection();         
+                
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(2000);//Tiempo de intento de conexión al servidor
+                conn.setInstanceFollowRedirects( false );
+                conn.setRequestMethod("POST");//Método POST
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); 
+                conn.setRequestProperty("charset", "utf-8");
+                conn.setRequestProperty("Content-Length", Integer.toString(longitud));
+                conn.setUseCaches(false);
+                
+                //Escribe en la conexión
+                try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream())) {
+                    wr.write(datos);
+                }
+                
+                //Métodos de lectura
+               Reader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+                BufferedReader in = new BufferedReader(br);
+                
+                //Mientras lea líneas
+                while ((inputline = in.readLine()) != null) {
+                    //Si la línea empieza por Resultado=
+                    if(inputline.startsWith("Resultado=")){
+                        //Separo las palabras por el =
+                        salida = inputline.split("=");
+                    }
+                }
+                //Devuelvo la cadena que había detrás del =
+                return salida[1];
+            
+            //Si no puedo leer o escribir
+            }catch(IOException e){
+                //Error de conexión
+                return mensajes[2];
+            }
+        
+        //Si la URL no está bien montada
+        }catch(MalformedURLException u){
+            //Error de URL
+            return mensajes[3];
+        }
+        
+    }   
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private static javax.swing.JLabel jApellidos;
     private javax.swing.JButton jButtonAutentica;

@@ -1,3 +1,7 @@
+
+import java.net.URL;
+import java.util.Date;
+
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -42,6 +46,11 @@ public class User {
 
     public String getDni() {
         return dni;
+    }
+    public String firma(String url){
+        Date date = new Date();
+        String datosafirmar = "nombre="+name +"&apellidos="+ apellidos+ "&dni= "+dni+ "&fecha= "+date.toString()+ "&url="+ url ;
+        return datosafirmar;
     }
 
 }
