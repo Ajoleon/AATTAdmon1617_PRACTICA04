@@ -163,7 +163,7 @@ public class AutenticaClient extends javax.swing.JFrame {
         try {
             iniKeyStore();
             try {
-                doAuth("hola");
+                doAuth();
             } catch (UnrecoverableKeyException ex) {
                 Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
             } catch (MalformedURLException ex) {
@@ -189,7 +189,7 @@ public class AutenticaClient extends javax.swing.JFrame {
     }//GEN-LAST:event_jButtonAutenticaActionPerformed
 
     private void jButtonGrabarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGrabarActionPerformed
-      //saveCertificate();
+      saveCertificate();
     }//GEN-LAST:event_jButtonGrabarActionPerformed
 
     /**
@@ -230,7 +230,7 @@ public class AutenticaClient extends javax.swing.JFrame {
                 System.out.println(aliases.nextElement());
             }
             user = new User(authCert.toString());
-           
+       
             infoBox("Hola " + user.getName()," Bienvenido");
 
         } catch (KeyStoreException ex) {
@@ -241,7 +241,9 @@ public class AutenticaClient extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
                 new AutenticaClient().setVisible(true);
-
+                jName.setText(user.getName());
+                jApellidos.setText(user.getApellidos());
+                jDNI.setText(user.getDni());
             }
         });
 
@@ -253,7 +255,8 @@ public class AutenticaClient extends javax.swing.JFrame {
     private static Provider dniProvider = null;
     private static KeyStore dniKS = null;
     private static X509Certificate authCert = null;
-    private static  String url = "192.168.0.106:8081";
+    private static  String url = "10.82.51.253:8081";
+    private static RSAPublicKey rsa = null;
     /**
      * @param args the command line arguments
      */
@@ -276,20 +279,20 @@ public class AutenticaClient extends javax.swing.JFrame {
         
     }
 
-    public void saveCertificate(byte[] encodedKey) {
+    public void saveCertificate() {
         try {
 
             // Se obtiene el motor de firma y se inicializa
-            FileOutputStream keyfos = new FileOutputStream("public.key");
-            RSAPublicKey rsa = (RSAPublicKey) authCert.getPublicKey();
-            //byte encodedKey[] = rsa.getEncoded(); cuando firmemos se pasa el rsa.getEncoded();
+           FileOutputStream keyfos = new FileOutputStream("public.key");
+            
+            byte encodedKey[] = rsa.getEncoded(); 
 
             String rsakey = rsa.getFormat() + " " + rsa.getAlgorithm() + rsa.toString();
             System.out.println(rsakey);
             keyfos.write(encodedKey);
             keyfos.close();
-            //Certificate authCert = ks.getCertificate("CertFirmaDigital");
-        } catch (IOException ex) {
+            System.out.println("Grabado");
+       } catch (IOException ex) {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -300,13 +303,18 @@ public class AutenticaClient extends javax.swing.JFrame {
      * @param data Datos a firmar
      * @return
      */
-    private String doAuth(String data) throws SignatureError, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException, InvalidKeyException, MalformedURLException, SignatureException, IOException {
+    private String doAuth() throws SignatureError, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException, InvalidKeyException, MalformedURLException, SignatureException, IOException {
         final Signature signature = Signature.getInstance("SHA1withRSA"); 
         signature.initSign((PrivateKey) dniKS.getKey(alias, null));
-        signature.update(user.firma(url).getBytes()); //$NON-NLS-1$
+        rsa = (RSAPublicKey) dniKS.getCertificate(alias).getPublicKey();
+        System.out.println(rsa);
+        String [] datos = user.firma(url);
+        signature.update(datos[1].getBytes()); //$NON-NLS-1$
         final byte[] signatureBytes = signature.sign();
         byte[] encoded = Base64.getEncoder().encode(signatureBytes);
-        peticion(encoded.toString());
+        String enviar=datos[0] +"&firm="+encoded.toString();
+        System.out.println(enviar);
+        peticion(enviar);
         
         return signatureBytes.toString();
     }
@@ -321,9 +329,9 @@ public class AutenticaClient extends javax.swing.JFrame {
     public static String peticion(String aenviar) throws MalformedURLException, ProtocolException, IOException{
         String inputline= "";
         String [] salida = null;
-        String urlParameters  = "firm="+aenviar;
         
-        byte[] datos = urlParameters.getBytes( StandardCharsets.UTF_8 );
+        
+        byte[] datos = aenviar.getBytes( StandardCharsets.UTF_8 );
         int longitud = datos.length;
         
         //Cadena con la URL

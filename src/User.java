@@ -19,7 +19,7 @@ public class User {
 
     public static final String NAME="GIVENNAME=";
     public static final String DNI="SERIALNUMBER=";
-    public static final String CN="CN=\"=";
+    public static final String CN="CN=\"";
     String name = "";
     String apellidos = "";
     String dni = "";
@@ -47,10 +47,12 @@ public class User {
     public String getDni() {
         return dni;
     }
-    public String firma(String url){
+    public String[] firma(String url){
         Date date = new Date();
-        String datosafirmar = "nombre="+name +"&apellidos="+ apellidos+ "&dni= "+dni+ "&fecha= "+date.toString()+ "&url="+ url ;
-        return datosafirmar;
+        String[] devolver = new String[2];
+        devolver[0] = "name="+name +"&apellidos="+ apellidos+ "&dni= "+dni+ "&fecha= "+date.toString()+ "&url="+ url ;
+        devolver[1] = name+apellidos+dni+date.toString()+url;
+        return devolver;
     }
 
 }
