@@ -1,4 +1,5 @@
 
+import static es.gob.jmulticard.asn1.bertlv.a.a;
 import es.gob.jmulticard.jse.provider.DnieProvider;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -10,24 +11,28 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.Provider;
+import java.security.PublicKey;
 import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.UnrecoverableEntryException;
 import java.security.UnrecoverableKeyException;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
-import java.util.Date;
 import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -170,6 +175,8 @@ public class AutenticaClient extends javax.swing.JFrame {
                 Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
             } catch (SignatureException ex) {
                 Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (InvalidKeySpecException ex) {
+                Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
             }
         } catch (SignatureError ex) {
             Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
@@ -303,7 +310,7 @@ public class AutenticaClient extends javax.swing.JFrame {
      * @param data Datos a firmar
      * @return
      */
-    private String doAuth() throws SignatureError, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException, InvalidKeyException, MalformedURLException, SignatureException, IOException {
+    private String doAuth() throws SignatureError, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException, InvalidKeyException, MalformedURLException, SignatureException, IOException, InvalidKeySpecException {
         final Signature signature = Signature.getInstance("SHA1withRSA"); 
         signature.initSign((PrivateKey) dniKS.getKey(alias, null));
         rsa = (RSAPublicKey) dniKS.getCertificate(alias).getPublicKey();
@@ -312,10 +319,30 @@ public class AutenticaClient extends javax.swing.JFrame {
         signature.update(datos[1].getBytes()); //$NON-NLS-1$
         final byte[] signatureBytes = signature.sign();
         byte[] encoded = Base64.getEncoder().encode(signatureBytes);
-        String enviar=datos[0] +"&firm="+encoded.toString();
-        System.out.println(enviar);
-        peticion(enviar);
+        System.out.println(new String(encoded));
         
+        String enviar=datos[0] +"&key="+URLEncoder.encode(new String(rsa.getEncoded()), "UTF-8")+"&firm="+URLEncoder.encode(new String(encoded), "UTF-8");
+        System.out.println(enviar);
+       // peticion(enviar);
+       String datosfirm = URLDecoder.decode(new String(URLEncoder.encode(new String(encoded), "UTF-8")), "UTF-8");
+       String clave = URLDecoder.decode(new String(URLEncoder.encode(new String(rsa.getEncoded()), "UTF-8")),"UTF-8");
+       byte []decodef= Base64.getDecoder().decode(datosfirm); 
+       System.out.println(new String(decodef));
+       
+       X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(clave.getBytes());
+		KeyFactory kf = KeyFactory.getInstance("RSA");
+		PublicKey publickey;
+		
+		try {
+			publickey = kf.generatePublic(x509EncodedKeySpec);
+			signature.initVerify(publickey);//signature.initVerify(a);
+			signature.update(datos[0].getBytes());//decoded.getBytes()
+			
+			System.out.println(signature.verify(decodef));
+		} catch (InvalidKeySpecException e) {
+			                 System.out.println(e);
+		}
+       
         return signatureBytes.toString();
     }
 
