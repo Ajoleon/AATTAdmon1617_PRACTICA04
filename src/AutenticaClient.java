@@ -319,29 +319,27 @@ public class AutenticaClient extends javax.swing.JFrame {
         signature.update(datos[1].getBytes()); //$NON-NLS-1$
         final byte[] signatureBytes = signature.sign();
         byte[] encoded = Base64.getEncoder().encode(signatureBytes);
-        System.out.println(new String(encoded));
-        
-        String enviar=datos[0] +"&key="+URLEncoder.encode(new String(rsa.getEncoded()), "UTF-8")+"&firm="+URLEncoder.encode(new String(encoded), "UTF-8");
+        byte[] rsaencoded = Base64.getEncoder().encode(rsa.getEncoded());
+        System.out.println("encoded:"+new String(encoded));
+        System.out.println("rsaencoded:"+new String(rsaencoded));
+        String enviar=datos[0] +"&key="+URLEncoder.encode(new String(rsaencoded), "UTF-8")+"&firm="+URLEncoder.encode(new String(encoded), "UTF-8");
         System.out.println(enviar);
-       // peticion(enviar);
-       String datosfirm = URLDecoder.decode(new String(URLEncoder.encode(new String(encoded), "UTF-8")), "UTF-8");
-       String clave = URLDecoder.decode(new String(URLEncoder.encode(new String(rsa.getEncoded()), "UTF-8")),"UTF-8");
-       byte []decodef= Base64.getDecoder().decode(datosfirm); 
-       System.out.println(new String(decodef));
+       peticion(enviar);
+       //String datosfirm = URLDecoder.decode(new String(URLEncoder.encode(new String(encoded), "UTF-8")), "UTF-8");
+       //String clave = URLDecoder.decode(new String(URLEncoder.encode(new String(rsa.getEncoded()), "UTF-8")),"UTF-8");
+      // byte []decodef= Base64.getDecoder().decode(datosfirm); 
+       //System.out.println(new String(decodef));
        
-       X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(clave.getBytes());
-		KeyFactory kf = KeyFactory.getInstance("RSA");
-		PublicKey publickey;
+       String enc= URLEncoder.encode(new String(encoded), "UTF-8");
+       String dec = URLDecoder.decode(enc, "UTF-8");
+       byte[] dec6 = Base64.getDecoder().decode(dec);
+       System.out.println(new String(dec6));
+       signature.initVerify(rsa);//signature.initVerify(a);
+       signature.update(datos[1].getBytes());//decoded.getBytes()
+       System.out.println(signature.verify(signatureBytes));
 		
-		try {
-			publickey = kf.generatePublic(x509EncodedKeySpec);
-			signature.initVerify(publickey);//signature.initVerify(a);
-			signature.update(datos[0].getBytes());//decoded.getBytes()
 			
-			System.out.println(signature.verify(decodef));
-		} catch (InvalidKeySpecException e) {
-			                 System.out.println(e);
-		}
+		
        
         return signatureBytes.toString();
     }
