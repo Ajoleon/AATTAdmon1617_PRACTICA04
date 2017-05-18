@@ -50,7 +50,7 @@ public class User {
     public String[] firma(String url){
         Date date = new Date();
         String[] devolver = new String[2];
-        devolver[0] = "name="+name +"&apellidos="+ apellidos+ "&dni= "+dni+ "&fecha= "+date.toString()+ "&url="+ url ;
+        devolver[0] = "name="+name +"&apellidos="+ apellidos+ "&dni="+dni+ "&fecha="+date.toString()+ "&url="+ url ;
         devolver[1] = name+apellidos+dni+date.toString()+url;
         return devolver;
     }

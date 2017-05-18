@@ -168,7 +168,17 @@ public class AutenticaClient extends javax.swing.JFrame {
         try {
             iniKeyStore();
             try {
-                doAuth();
+               String resultado =  doAuth();
+               if(resultado.equals(resultados[0])){
+                    infoBox(mensajes[0],"Resultado");
+               }else if(resultado.equals(resultados[1])){
+                    infoBox(mensajes[3],"Resultado");
+               }else if(resultado.equals(resultados[2])){
+                    infoBox(mensajes[1],"Resultado");
+               }else{
+                    infoBox(mensajes[2],"Resultado");
+               }
+              
             } catch (UnrecoverableKeyException ex) {
                 Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
             } catch (MalformedURLException ex) {
@@ -255,14 +265,14 @@ public class AutenticaClient extends javax.swing.JFrame {
         });
 
     }
-    public final static String[] resultados = {"OK","Error"};
+    public final static String[] resultados = {"OK","Error","ErrorUser"};
     public final static String[] mensajes = {"Autenticación Correcta.","Error en la autenticación, usuario inválido.",
-                                            "Error de conexión.", "Error en la url."};
+                                            "Error de conexión.", "Error en la firma."};
     public static String alias = "CertFirmaDigital";
     private static Provider dniProvider = null;
     private static KeyStore dniKS = null;
     private static X509Certificate authCert = null;
-    private static  String url = "10.82.51.253:8081";
+    private static  String url = "192.168.0.107:8081";
     private static RSAPublicKey rsa = null;
     /**
      * @param args the command line arguments
@@ -314,34 +324,41 @@ public class AutenticaClient extends javax.swing.JFrame {
         final Signature signature = Signature.getInstance("SHA1withRSA"); 
         signature.initSign((PrivateKey) dniKS.getKey(alias, null));
         rsa = (RSAPublicKey) dniKS.getCertificate(alias).getPublicKey();
-        System.out.println(rsa);
+        System.out.println("rsa: "+rsa);
         String [] datos = user.firma(url);
         signature.update(datos[1].getBytes()); //$NON-NLS-1$
         final byte[] signatureBytes = signature.sign();
-        byte[] encoded = Base64.getEncoder().encode(signatureBytes);
-        byte[] rsaencoded = Base64.getEncoder().encode(rsa.getEncoded());
+        byte[] encoded = Base64.getUrlEncoder().encode(signatureBytes);
+        byte[] rsaencoded = Base64.getUrlEncoder().encode(rsa.getEncoded());
         System.out.println("encoded:"+new String(encoded));
         System.out.println("rsaencoded:"+new String(rsaencoded));
-        String enviar=datos[0] +"&key="+URLEncoder.encode(new String(rsaencoded), "UTF-8")+"&firm="+URLEncoder.encode(new String(encoded), "UTF-8");
+        String enviar=datos[0] +"&key="+new String(rsaencoded) +"&firm="+ new String(encoded);
         System.out.println(enviar);
-       peticion(enviar);
-       //String datosfirm = URLDecoder.decode(new String(URLEncoder.encode(new String(encoded), "UTF-8")), "UTF-8");
-       //String clave = URLDecoder.decode(new String(URLEncoder.encode(new String(rsa.getEncoded()), "UTF-8")),"UTF-8");
-      // byte []decodef= Base64.getDecoder().decode(datosfirm); 
-       //System.out.println(new String(decodef));
+        System.out.println(datos[1]);
+        String respuesta = peticion(enviar);
+        System.out.println(respuesta);	
        
-       String enc= URLEncoder.encode(new String(encoded), "UTF-8");
-       String dec = URLDecoder.decode(enc, "UTF-8");
-       byte[] dec6 = Base64.getDecoder().decode(dec);
-       System.out.println(new String(dec6));
-       signature.initVerify(rsa);//signature.initVerify(a);
-       signature.update(datos[1].getBytes());//decoded.getBytes()
-       System.out.println(signature.verify(signatureBytes));
-		
+        /*byte [] recibidofirm = Base64.getUrlDecoder().decode(new String(encoded).getBytes());
+       byte [] recibidokey = Base64.getUrlDecoder().decode(new String(rsaencoded).getBytes());
+       X509EncodedKeySpec x509 = new X509EncodedKeySpec(recibidokey);
+       KeyFactory kf = KeyFactory.getInstance("RSA");
+       PublicKey publick;
+       Boolean test1;
+       try {
+			publick = kf.generatePublic(x509);
+			Signature test = Signature.getInstance("SHA1withRSA");
+			signature.initVerify(publick);//signature.initVerify(a);
+			signature.update(datos[1].getBytes());//decoded.getBytes()
 			
+			 test1 = signature.verify(recibidofirm);
+		} catch (InvalidKeySpecException e) {
+			test1 = false;
+		}
+        System.out.println(test1);*/
+       
 		
        
-        return signatureBytes.toString();
+        return respuesta;
     }
 
     public class SignatureError extends Exception {
