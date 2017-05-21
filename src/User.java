@@ -13,7 +13,7 @@ import java.util.Date;
  * SURNAME=CUEVAS, GIVENNAME=JUAN CARLOS, CN="CUEVAS MARTINEZ, JUAN CARLOS
  * (FIRMA)"
  *
- * @author Juan Carlos
+ * @author Juan Carlos Cuevas Martínez, Pablo Castillo Segura y Antonio José León Sánchez
  */
 public class User {
 
@@ -24,8 +24,10 @@ public class User {
     String apellidos = "";
     String dni = "";
 
+    //Constructor vacío
     public User(){};
     
+    //Constructor con la cadena de datos
     public User(String data) {
 
         name = data.substring(data.indexOf(NAME) + NAME.length());
@@ -47,6 +49,15 @@ public class User {
     public String getDni() {
         return dni;
     }
+    
+    /**
+     * Método para devolver un array de cadenas
+     * La cadena 0 devuelve la url para enviar los datos
+     * La cadena 1 devuelve la cadena con los datos a firmar
+     * 
+     * @param url url del servidor a enviar los datos
+     * @return Array de cadenas con url y datos sin firmar
+     */
     public String[] firma(String url){
         Date date = new Date();
         String[] devolver = new String[2];

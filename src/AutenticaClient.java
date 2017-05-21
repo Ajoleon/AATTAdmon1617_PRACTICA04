@@ -44,14 +44,17 @@ import javax.swing.JOptionPane;
  * and open the template in the editor.
  */
 /**
- *
- * @author Juan Carlos
+ * Clase de la aplicación para enviar los datos al servidor y verificar
+ * 
+ * @author Juan Carlos Cuevas Martínez, Pablo Castillo Segura y Antonio José León Sánchez
  */
 public class AutenticaClient extends javax.swing.JFrame {
+    
+    //Se inicializa constructor del usuario
     public static User user = new User();
 
     /**
-     * Creates new form NewJFrame
+     * Crea nuevo formulario JFrame
      */
     public AutenticaClient() {
         initComponents();
@@ -166,18 +169,24 @@ public class AutenticaClient extends javax.swing.JFrame {
 
     private void jButtonAutenticaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonAutenticaActionPerformed
         try {
+            //Se inicializa almacén de claves
             iniKeyStore();
+            
             try {
-               String resultado =  doAuth();
-               if(resultado.equals(resultados[0])){
+                
+                //Método para realizar la petición al servidor y que devuelve la respuesta
+                String resultado =  doAuth();
+                
+                //En función del resultado del servidor, muestro mensaje
+                if(resultado.equals(resultados[0])){
                     infoBox(mensajes[0],"Resultado");
-               }else if(resultado.equals(resultados[1])){
+                }else if(resultado.equals(resultados[1])){
                     infoBox(mensajes[3],"Resultado");
-               }else if(resultado.equals(resultados[2])){
+                }else if(resultado.equals(resultados[2])){
                     infoBox(mensajes[1],"Resultado");
-               }else{
+                }else{
                     infoBox(mensajes[2],"Resultado");
-               }
+                }
               
             } catch (UnrecoverableKeyException ex) {
                 Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
@@ -205,15 +214,22 @@ public class AutenticaClient extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jButtonAutenticaActionPerformed
 
+    //Si se pulsa botón de grabar certificado
     private void jButtonGrabarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonGrabarActionPerformed
       saveCertificate();
     }//GEN-LAST:event_jButtonGrabarActionPerformed
 
     /**
-     * @param args the command line arguments
+     * Método principal de la aplicación
+     * 
+     * @param args Argumentos de entrada por líne de comandos
+     * @throws IOException Excepción al leer o escribir del canal
+     * @throws NoSuchAlgorithmException Error en el algoritmo para encriptar
+     * @throws CertificateException Fallo en el certificado del DNI
+     * @throws UnrecoverableEntryException Fallo en la clave utilizada en el keymanager
      */
     public static void main(String args[]) throws IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableEntryException {
-        String dn = "";
+        
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
@@ -239,8 +255,8 @@ public class AutenticaClient extends javax.swing.JFrame {
 
         try {
             System.setProperty("es.gob.jmulticard.fastmode", "true");
-           
-         iniKeyStore();
+            
+            iniKeyStore();
          
             final Enumeration<String> aliases = dniKS.aliases();
             while (aliases.hasMoreElements()) {
@@ -265,15 +281,22 @@ public class AutenticaClient extends javax.swing.JFrame {
         });
 
     }
+    
+    //Arrays con resultados del servidor y mensajes
     public final static String[] resultados = {"OK","Error","ErrorUser"};
     public final static String[] mensajes = {"Autenticación Correcta.","Error en la autenticación, usuario inválido.",
                                             "Error de conexión.", "Error en la firma."};
+    
+    //Variables para realizar la firma
     public static String alias = "CertFirmaDigital";
     private static Provider dniProvider = null;
     private static KeyStore dniKS = null;
     private static X509Certificate authCert = null;
-    private static  String url = "192.168.0.107:8081";
     private static RSAPublicKey rsa = null;
+    
+    //URL del servidor
+    private static  String url = "192.168.0.107:8081";
+    
     /**
      * @param args the command line arguments
      */
@@ -281,83 +304,56 @@ public class AutenticaClient extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(null, infoMessage, titleBar, JOptionPane.INFORMATION_MESSAGE);
     }
 
+    
     private static void iniKeyStore() throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException, UnrecoverableEntryException {
         if (dniKS == null) {
-           //TODO inicializar el KeyStore
+          //Inicializamos almacén de claves con el certificado
           dniProvider = new DnieProvider();
           Security.addProvider(dniProvider);
           dniKS = KeyStore.getInstance("DNI"); //$NON-NLS-1$ 
           dniKS.load(null, null);
           authCert = (X509Certificate) dniKS.getCertificate("CertAutenticacion");
          
-          
-        }
-        
-        
-    }
-
-    public void saveCertificate() {
-        try {
-
-            // Se obtiene el motor de firma y se inicializa
-           FileOutputStream keyfos = new FileOutputStream("public.key");
-            
-            byte encodedKey[] = rsa.getEncoded(); 
-
-            String rsakey = rsa.getFormat() + " " + rsa.getAlgorithm() + rsa.toString();
-            System.out.println(rsakey);
-            keyfos.write(encodedKey);
-            keyfos.close();
-            System.out.println("Grabado");
-       } catch (IOException ex) {
-            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     /**
      * Devuelve los datos de entrada firmados en Base64
      *
-     * @param data Datos a firmar
-     * @return
+     * @return Cadena que devuelve el servidor con la respuesta
      */
     private String doAuth() throws SignatureError, NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException, InvalidKeyException, MalformedURLException, SignatureException, IOException, InvalidKeySpecException {
+        //Se inicializa firma con la seguridad de cifrado SHA1
         final Signature signature = Signature.getInstance("SHA1withRSA"); 
+        
+        //Se obtiene la clave del certificado del DNI
         signature.initSign((PrivateKey) dniKS.getKey(alias, null));
         rsa = (RSAPublicKey) dniKS.getCertificate(alias).getPublicKey();
         System.out.println("rsa: "+rsa);
+        
+        //Devuelve las cadenas de la url y la de datos sin firmar
         String [] datos = user.firma(url);
+        
+        //Utilizo los datos sin firmar para añadirlos a la firma
         signature.update(datos[1].getBytes()); //$NON-NLS-1$
         final byte[] signatureBytes = signature.sign();
+        
+        //Codifico los datos firmados y la clave en base 64
         byte[] encoded = Base64.getUrlEncoder().encode(signatureBytes);
         byte[] rsaencoded = Base64.getUrlEncoder().encode(rsa.getEncoded());
         System.out.println("encoded:"+new String(encoded));
         System.out.println("rsaencoded:"+new String(rsaencoded));
+        
+        //Cadena a enviar al servidor con los parámetros del formulario
         String enviar=datos[0] +"&key="+new String(rsaencoded) +"&firm="+ new String(encoded);
         System.out.println(enviar);
         System.out.println(datos[1]);
+        
+        //Llamo al método que realiza la petición
         String respuesta = peticion(enviar);
         System.out.println(respuesta);	
        
-        /*byte [] recibidofirm = Base64.getUrlDecoder().decode(new String(encoded).getBytes());
-       byte [] recibidokey = Base64.getUrlDecoder().decode(new String(rsaencoded).getBytes());
-       X509EncodedKeySpec x509 = new X509EncodedKeySpec(recibidokey);
-       KeyFactory kf = KeyFactory.getInstance("RSA");
-       PublicKey publick;
-       Boolean test1;
-       try {
-			publick = kf.generatePublic(x509);
-			Signature test = Signature.getInstance("SHA1withRSA");
-			signature.initVerify(publick);//signature.initVerify(a);
-			signature.update(datos[1].getBytes());//decoded.getBytes()
-			
-			 test1 = signature.verify(recibidofirm);
-		} catch (InvalidKeySpecException e) {
-			test1 = false;
-		}
-        System.out.println(test1);*/
-       
-		
-       
+        //Devuelvo la respuesta
         return respuesta;
     }
 
@@ -368,8 +364,21 @@ public class AutenticaClient extends javax.swing.JFrame {
         }
 
     }
+    
+    /**
+     * Método para realizar la petición al servidor
+     * 
+     * @param aenviar Cadena de datos a enviar
+     * @return Mensaje en función del resultado del servidor
+     * @throws MalformedURLException Error al montar la URL
+     * @throws ProtocolException Excepción en el protocolo de comunicación
+     * @throws IOException Error al escribir o leer del canal
+     */
     public static String peticion(String aenviar) throws MalformedURLException, ProtocolException, IOException{
+        
+        //Variable que indica la línea que se lee del canal
         String inputline= "";
+        //Variable que contendrá el resultado del servidor separado por =
         String [] salida = null;
         
         
@@ -379,6 +388,7 @@ public class AutenticaClient extends javax.swing.JFrame {
         //Cadena con la URL
         String direccion = "http://"+url+"/server/validar";
         System.out.println(direccion);
+        
         try{
             //Monto la URL
             URL url = new URL(direccion);
@@ -396,13 +406,13 @@ public class AutenticaClient extends javax.swing.JFrame {
                 conn.setRequestProperty("Content-Length", Integer.toString(longitud));
                 conn.setUseCaches(false);
                 
-                //Escribe en la conexión
+                //Escribe en el canal de escritura
                 try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream())) {
                     wr.write(datos);
                 }
                 
-                //Métodos de lectura
-               Reader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
+                //Canal de lectura
+                Reader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
                 BufferedReader in = new BufferedReader(br);
                 
                 //Mientras lea líneas
@@ -428,7 +438,32 @@ public class AutenticaClient extends javax.swing.JFrame {
             return mensajes[3];
         }
         
-    }   
+    }
+    
+    /**
+     * Método para guardar la clave pública en un fichero
+     */
+    public void saveCertificate() {
+        try {
+            // Se obtiene el motor de firma y se inicializa
+            FileOutputStream keyfos = new FileOutputStream("public.key");
+            
+            byte encodedKey[] = rsa.getEncoded(); 
+
+            //Se formatea la clave
+            String rsakey = rsa.getFormat() + " " + rsa.getAlgorithm() + rsa.toString();
+            System.out.println(rsakey);
+            
+            //Se escribe en el archivo
+            keyfos.write(encodedKey);
+            
+            //Se cierra canal
+            keyfos.close();
+            System.out.println("Grabado");
+       } catch (IOException ex) {
+            Logger.getLogger(AutenticaClient.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private static javax.swing.JLabel jApellidos;
     private javax.swing.JButton jButtonAutentica;
